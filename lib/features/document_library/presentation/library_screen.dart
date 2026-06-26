@@ -1,3 +1,4 @@
+import 'package:docscan/core/constants/date_formats.dart';
 import 'package:docscan/features/document_library/presentation/document_card.dart';
 import 'package:docscan/features/document_library/presentation/tag_pill.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import '../../export/application/export_controller.dart';
 import '../../settings/presentation/settings_screen.dart';
 import 'document_search_delegate.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../tagging/presentation/tag_dialog.dart';
 
 class LibraryScreen extends ConsumerWidget {
   const LibraryScreen({super.key});
@@ -63,9 +65,9 @@ class LibraryScreen extends ConsumerWidget {
                           fontFamily: 'Inter',
                         ),
                         children: [
-                          TextSpan(text: 'LENS_'),
+                          TextSpan(text: 'Open '),
                           TextSpan(
-                            text: 'CORE',
+                            text: 'Lens',
                             style: TextStyle(color: AppTheme.accent),
                           ),
                         ],
@@ -212,9 +214,19 @@ class FloatingScannerButton extends ConsumerWidget {
               heroTag: 'scan',
               onPressed: scannerState.isLoading
                   ? null
-                  : () => ref
-                        .read(scannerControllerProvider.notifier)
-                        .captureAndSaveDocument(),
+                  : () async {
+                      final docId = await ref
+                          .read(scannerControllerProvider.notifier)
+                          .captureAndSaveDocument();
+                      if (docId != null && context.mounted) {
+                        await TagAndRenameDialog.show(
+                          context,
+                          ref,
+                          docId,
+                          'Scan ${defaultDateFormat.format(DateTime.now())}',
+                        );
+                      }
+                    },
               backgroundColor: Colors.white,
               foregroundColor: AppTheme.background,
               elevation: 8,

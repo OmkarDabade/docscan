@@ -65,7 +65,7 @@ class DocumentSearchDelegate extends SearchDelegate<Document?> {
   }
 
   Widget _buildSearchResults() {
-    final docsAsync = ref.read(documentListProvider);
+    final docsAsync = ref.watch(documentListProvider);
 
     return docsAsync.when(
       data: (docs) {
