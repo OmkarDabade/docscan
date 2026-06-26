@@ -124,99 +124,108 @@ class _DocumentCardState extends ConsumerState<DocumentCard> {
                     ),
                   ),
                   Positioned(
-                    top: 0,
-                    right: 0,
-                    child: PopupMenuButton<String>(
-                      icon: const Icon(
-                        Icons.more_vert,
-                        color: AppTheme.textSecondary,
-                        size: 24,
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        shape: BoxShape.circle,
                       ),
-                      color: AppTheme.surface,
-                      onSelected: (value) async {
-                        if (value == 'delete') {
-                          await ref
-                              .read(documentRepositoryProvider)
-                              .deleteDocument(widget.document.id);
-                        } else if (value == 'export') {
-                          ref
-                              .read(exportControllerProvider.notifier)
-                              .exportDocument(widget.document);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Exporting PDF...')),
-                          );
-                        } else if (value == 'tag') {
-                          await TagAndRenameDialog.show(
-                            context,
-                            ref,
-                            widget.document.id,
-                            widget.document.title,
-                          );
-                        }
-                      },
-                      itemBuilder: (BuildContext context) =>
-                          <PopupMenuEntry<String>>[
-                            const PopupMenuItem<String>(
-                              value: 'export',
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.share_outlined,
-                                    size: 18,
-                                    color: AppTheme.textPrimary,
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Share as PDF',
-                                    style: TextStyle(
+                      child: PopupMenuButton<String>(
+                        icon: const Icon(
+                          Icons.more_vert,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                        padding: EdgeInsets.zero,
+                        color: AppTheme.surface,
+                        onSelected: (value) async {
+                          if (value == 'delete') {
+                            await ref
+                                .read(documentRepositoryProvider)
+                                .deleteDocument(widget.document.id);
+                          } else if (value == 'export') {
+                            ref
+                                .read(exportControllerProvider.notifier)
+                                .exportDocument(widget.document);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Exporting PDF...')),
+                            );
+                          } else if (value == 'tag') {
+                            await TagAndRenameDialog.show(
+                              context,
+                              ref,
+                              widget.document.id,
+                              widget.document.title,
+                            );
+                          }
+                        },
+                        itemBuilder: (BuildContext context) =>
+                            <PopupMenuEntry<String>>[
+                              const PopupMenuItem<String>(
+                                value: 'export',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.share_outlined,
+                                      size: 18,
                                       color: AppTheme.textPrimary,
-                                      fontSize: 14,
                                     ),
-                                  ),
-                                ],
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Share as PDF',
+                                      style: TextStyle(
+                                        color: AppTheme.textPrimary,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            const PopupMenuItem<String>(
-                              value: 'tag',
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.local_offer_outlined,
-                                    size: 18,
-                                    color: AppTheme.textPrimary,
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Manage Tags',
-                                    style: TextStyle(
+                              const PopupMenuItem<String>(
+                                value: 'tag',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.local_offer_outlined,
+                                      size: 18,
                                       color: AppTheme.textPrimary,
-                                      fontSize: 14,
                                     ),
-                                  ),
-                                ],
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Manage Tags',
+                                      style: TextStyle(
+                                        color: AppTheme.textPrimary,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            const PopupMenuItem<String>(
-                              value: 'delete',
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.delete_outline,
-                                    size: 18,
-                                    color: Colors.redAccent,
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'Delete',
-                                    style: TextStyle(
+                              const PopupMenuItem<String>(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.delete_outline,
+                                      size: 18,
                                       color: Colors.redAccent,
-                                      fontSize: 14,
                                     ),
-                                  ),
-                                ],
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Delete',
+                                      style: TextStyle(
+                                        color: Colors.redAccent,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                      ),
                     ),
                   ),
                 ],

@@ -277,12 +277,14 @@ class FloatingScannerButton extends ConsumerWidget {
                         ),
                       ),
                       TextButton(
-                        onPressed: () {
+                        onPressed: () async {
                           if (tagController.text.trim().isNotEmpty) {
-                            ref
+                            await ref
                                 .read(tagRepositoryProvider)
                                 .insertTag(tagController.text.trim());
-                            Navigator.pop(context);
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                            }
                           }
                         },
                         child: const Text(
