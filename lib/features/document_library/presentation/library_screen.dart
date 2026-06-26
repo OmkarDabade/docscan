@@ -1,4 +1,5 @@
 import 'package:docscan/features/document_library/presentation/document_card.dart';
+import 'package:docscan/features/document_library/presentation/tag_pill.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
@@ -91,7 +92,7 @@ class LibraryScreen extends ConsumerWidget {
             // High-performance horizontally scrollable reactive "Tag Tracker"
             SliverToBoxAdapter(
               child: SizedBox(
-                height: 48,
+                height: 32,
                 child: tagsAsync.when(
                   data: (tags) => ListView(
                     scrollDirection: Axis.horizontal,
@@ -291,47 +292,6 @@ class FloatingScannerButton extends ConsumerWidget {
             child: const Icon(Icons.local_offer_outlined),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class TagPill extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const TagPill({
-    super.key,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 0),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.accent : AppTheme.surface,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: isSelected ? AppTheme.accent : AppTheme.surfaceHighlight,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : AppTheme.textSecondary,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            fontSize: 14,
-          ),
-        ),
       ),
     );
   }
