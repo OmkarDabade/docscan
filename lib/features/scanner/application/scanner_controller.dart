@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:docscan/core/constants/date_formats.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'scanner_service.dart';
 import '../../document_library/data/document_repository.dart';
@@ -38,7 +39,7 @@ class ScannerController extends AsyncNotifier<void> {
           compressedPaths.add(compressed);
         }
 
-        final title = 'Scan_${DateTime.now().millisecondsSinceEpoch}';
+        final title = 'Scan ${defaultDateFormat.format(DateTime.now())}';
         await repo.insertDocument(title, compressedPaths);
       }
       state = const AsyncValue.data(null);
