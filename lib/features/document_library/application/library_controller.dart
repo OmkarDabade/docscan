@@ -31,3 +31,21 @@ final documentPagesProvider = FutureProvider.family<List<DocumentPage>, int>((
   final repo = ref.watch(documentRepositoryProvider);
   return repo.getPagesForDocument(documentId);
 });
+
+final documentTagsProvider = FutureProvider.family<List<Tag>, int>((
+  ref,
+  documentId,
+) {
+  final repo = ref.watch(documentRepositoryProvider);
+  return repo.getTagsForDocument(documentId);
+});
+
+final singleDocumentProvider = StreamProvider.family<Document, int>((
+  ref,
+  documentId,
+) {
+  final db = ref.watch(appDatabaseProvider);
+  return (db.select(
+    db.documents,
+  )..where((t) => t.id.equals(documentId))).watchSingle();
+});

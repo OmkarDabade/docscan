@@ -7,7 +7,7 @@ import 'package:docscan/features/document_library/application/library_controller
 import 'package:docscan/features/document_library/data/document_repository.dart';
 import 'package:docscan/features/document_library/presentation/document_preview_screen.dart';
 import 'package:docscan/features/export/application/export_controller.dart';
-import 'package:docscan/features/tagging/data/tag_repository.dart';
+import 'package:docscan/features/tagging/presentation/tag_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -55,85 +55,10 @@ class _DocumentCardState extends ConsumerState<DocumentCard> {
     });
   }
 
-  void _showTagDialog(
-    BuildContext context,
-    WidgetRef ref,
-    int documentId,
-  ) async {
-    final tags = await ref.read(tagListProvider.future);
-    final documentTags = await ref
-        .read(documentRepositoryProvider)
-        .getTagsForDocument(documentId);
-    final documentTagIds = documentTags.map((t) => t.id).toSet();
-
-    if (!context.mounted) return;
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              backgroundColor: AppTheme.surface,
-              title: const Text(
-                'Manage Tags',
-                style: TextStyle(color: AppTheme.textPrimary),
-              ),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: tags.length,
-                  itemBuilder: (context, index) {
-                    final tag = tags[index];
-                    final isSelected = documentTagIds.contains(tag.id);
-                    return CheckboxListTile(
-                      title: Text(
-                        tag.name,
-                        style: const TextStyle(color: AppTheme.textPrimary),
-                      ),
-                      value: isSelected,
-                      activeColor: AppTheme.accent,
-                      onChanged: (bool? value) async {
-                        if (value == true) {
-                          await ref
-                              .read(documentRepositoryProvider)
-                              .addTagToDocument(documentId, tag.id);
-                          setState(() {
-                            documentTagIds.add(tag.id);
-                          });
-                        } else {
-                          await ref
-                              .read(documentRepositoryProvider)
-                              .removeTagFromDocument(documentId, tag.id);
-                          setState(() {
-                            documentTagIds.remove(tag.id);
-                          });
-                        }
-                      },
-                    );
-                  },
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    'Close',
-                    style: TextStyle(color: AppTheme.accent),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final pagesAsync = ref.watch(documentPagesProvider(widget.document.id));
+    final tagsAsync = ref.watch(documentTagsProvider(widget.document.id));
 
     return GestureDetector(
       onTap: () {
@@ -208,9 +133,9 @@ class _DocumentCardState extends ConsumerState<DocumentCard> {
                         size: 24,
                       ),
                       color: AppTheme.surface,
-                      onSelected: (value) {
+                      onSelected: (value) async {
                         if (value == 'delete') {
-                          ref
+                          await ref
                               .read(documentRepositoryProvider)
                               .deleteDocument(widget.document.id);
                         } else if (value == 'export') {
@@ -221,12 +146,11 @@ class _DocumentCardState extends ConsumerState<DocumentCard> {
                             const SnackBar(content: Text('Exporting PDF...')),
                           );
                         } else if (value == 'tag') {
-                          _showTagDialog(context, ref, widget.document.id);
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('$value option coming soon'),
-                            ),
+                          await TagAndRenameDialog.show(
+                            context,
+                            ref,
+                            widget.document.id,
+                            widget.document.title,
                           );
                         }
                       },
@@ -234,23 +158,62 @@ class _DocumentCardState extends ConsumerState<DocumentCard> {
                           <PopupMenuEntry<String>>[
                             const PopupMenuItem<String>(
                               value: 'export',
-                              child: Text(
-                                'Share as PDF',
-                                style: TextStyle(color: AppTheme.textPrimary),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.share_outlined,
+                                    size: 18,
+                                    color: AppTheme.textPrimary,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Share as PDF',
+                                    style: TextStyle(
+                                      color: AppTheme.textPrimary,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             const PopupMenuItem<String>(
                               value: 'tag',
-                              child: Text(
-                                'Manage Tags',
-                                style: TextStyle(color: AppTheme.textPrimary),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.local_offer_outlined,
+                                    size: 18,
+                                    color: AppTheme.textPrimary,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Manage Tags',
+                                    style: TextStyle(
+                                      color: AppTheme.textPrimary,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             const PopupMenuItem<String>(
                               value: 'delete',
-                              child: Text(
-                                'Delete',
-                                style: TextStyle(color: Colors.redAccent),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.delete_outline,
+                                    size: 18,
+                                    color: Colors.redAccent,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Delete',
+                                    style: TextStyle(
+                                      color: Colors.redAccent,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -308,6 +271,42 @@ class _DocumentCardState extends ConsumerState<DocumentCard> {
                       ],
                     ),
                   ),
+            tagsAsync.when(
+              data: (tags) {
+                if (tags.isEmpty) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: tags.map((tag) {
+                        return Container(
+                          margin: const EdgeInsets.only(right: 4.0),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.accent.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            tag.name,
+                            style: const TextStyle(
+                              fontSize: 9,
+                              color: AppTheme.accent,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
+            ),
             const SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -320,14 +319,18 @@ class _DocumentCardState extends ConsumerState<DocumentCard> {
                     color: AppTheme.textSecondary,
                   ),
                 ),
-                const Text(
-                  'RAW',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontFamily: 'Inter',
-                    color: AppTheme.textSecondary,
-                    fontWeight: FontWeight.bold,
+                pagesAsync.when(
+                  data: (pages) => Text(
+                    '${pages.length} ${pages.length == 1 ? 'page' : 'pages'}',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontFamily: 'Inter',
+                      color: AppTheme.accent,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, _) => const SizedBox.shrink(),
                 ),
               ],
             ),

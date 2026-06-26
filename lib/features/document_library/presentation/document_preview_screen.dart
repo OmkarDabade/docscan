@@ -6,88 +6,13 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/database/database.dart';
 import '../data/document_repository.dart';
 import '../../export/application/export_controller.dart';
-import '../../tagging/data/tag_repository.dart';
+import '../../tagging/presentation/tag_dialog.dart';
+import '../application/library_controller.dart';
 
 class DocumentPreviewScreen extends ConsumerWidget {
   final Document document;
 
   const DocumentPreviewScreen({super.key, required this.document});
-
-  void _showTagDialog(
-    BuildContext context,
-    WidgetRef ref,
-    int documentId,
-  ) async {
-    final tags = await ref.read(tagListProvider.future);
-    final documentTags = await ref
-        .read(documentRepositoryProvider)
-        .getTagsForDocument(documentId);
-    final documentTagIds = documentTags.map((t) => t.id).toSet();
-
-    if (!context.mounted) return;
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              backgroundColor: AppTheme.surface,
-              title: const Text(
-                'Manage Tags',
-                style: TextStyle(color: AppTheme.textPrimary),
-              ),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: tags.length,
-                  itemBuilder: (context, index) {
-                    final tag = tags[index];
-                    final isSelected = documentTagIds.contains(tag.id);
-                    return CheckboxListTile(
-                      title: Text(
-                        tag.name,
-                        style: const TextStyle(color: AppTheme.textPrimary),
-                      ),
-                      value: isSelected,
-                      activeColor: AppTheme.accent,
-                      onChanged: (bool? value) async {
-                        if (value == true) {
-                          await ref
-                              .read(documentRepositoryProvider)
-                              .addTagToDocument(documentId, tag.id);
-                          setState(() {
-                            documentTagIds.add(tag.id);
-                          });
-                        } else {
-                          await ref
-                              .read(documentRepositoryProvider)
-                              .removeTagFromDocument(documentId, tag.id);
-                          setState(() {
-                            documentTagIds.remove(tag.id);
-                          });
-                        }
-                      },
-                    );
-                  },
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    'Close',
-                    style: TextStyle(color: AppTheme.accent),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -112,12 +37,15 @@ class DocumentPreviewScreen extends ConsumerWidget {
       );
     });
 
+    final docAsync = ref.watch(singleDocumentProvider(document.id));
+    final currentDoc = docAsync.value ?? document;
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         backgroundColor: AppTheme.surface,
         title: Text(
-          document.title,
+          currentDoc.title,
           style: const TextStyle(color: AppTheme.textPrimary),
         ),
         iconTheme: const IconThemeData(color: AppTheme.textPrimary),
@@ -129,47 +57,86 @@ class DocumentPreviewScreen extends ConsumerWidget {
               size: 24,
             ),
             color: AppTheme.surface,
-            onSelected: (value) {
+            onSelected: (value) async {
               if (value == 'delete') {
-                ref
+                await ref
                     .read(documentRepositoryProvider)
                     .deleteDocument(document.id);
-                Navigator.pop(context);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                }
               } else if (value == 'export') {
                 ref
                     .read(exportControllerProvider.notifier)
-                    .exportDocument(document);
+                    .exportDocument(currentDoc);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Exporting PDF...')),
                 );
               } else if (value == 'tag') {
-                _showTagDialog(context, ref, document.id);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('$value option coming soon')),
+                await TagAndRenameDialog.show(
+                  context,
+                  ref,
+                  document.id,
+                  currentDoc.title,
                 );
               }
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
               const PopupMenuItem<String>(
                 value: 'export',
-                child: Text(
-                  'Share as PDF',
-                  style: TextStyle(color: AppTheme.textPrimary),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.share_outlined,
+                      size: 18,
+                      color: AppTheme.textPrimary,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Share as PDF',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const PopupMenuItem<String>(
                 value: 'tag',
-                child: Text(
-                  'Manage Tags',
-                  style: TextStyle(color: AppTheme.textPrimary),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.local_offer_outlined,
+                      size: 18,
+                      color: AppTheme.textPrimary,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Manage Tags',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const PopupMenuItem<String>(
                 value: 'delete',
-                child: Text(
-                  'Delete',
-                  style: TextStyle(color: Colors.redAccent),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.delete_outline,
+                      size: 18,
+                      color: Colors.redAccent,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      'Delete',
+                      style: TextStyle(color: Colors.redAccent, fontSize: 14),
+                    ),
+                  ],
                 ),
               ),
             ],
