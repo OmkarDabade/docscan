@@ -8,6 +8,7 @@ import '../data/document_repository.dart';
 import '../../export/application/export_controller.dart';
 import '../../tagging/presentation/tag_dialog.dart';
 import '../application/library_controller.dart';
+import '../../scanner/application/scanner_controller.dart';
 
 class DocumentPreviewScreen extends ConsumerWidget {
   final Document document;
@@ -143,66 +144,182 @@ class DocumentPreviewScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: FutureBuilder<List<DocumentPage>>(
-        future: ref
-            .read(documentRepositoryProvider)
-            .getPagesForDocument(document.id),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Error loading pages: ${snapshot.error}',
-                style: const TextStyle(color: AppTheme.textSecondary),
-              ),
-            );
-          }
+      body: ref
+          .watch(documentPagesProvider(document.id))
+          .when(
+            data: (pages) {
+              if (pages.isEmpty) {
+                return const Center(
+                  child: Text(
+                    'No pages found for this document.',
+                    style: TextStyle(color: AppTheme.textSecondary),
+                  ),
+                );
+              }
 
-          final pages = snapshot.data ?? [];
-          if (pages.isEmpty) {
-            return const Center(
-              child: Text(
-                'No pages found for this document.',
-                style: TextStyle(color: AppTheme.textSecondary),
-              ),
-            );
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: pages.length,
-            itemBuilder: (context, index) {
-              final page = pages[index];
-              return Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppTheme.surfaceHighlight),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    File(page.compressedImagePath),
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const SizedBox(
-                        height: 200,
-                        child: Center(
-                          child: Icon(
-                            Icons.broken_image,
-                            color: AppTheme.textSecondary,
-                            size: 48,
+              return ListView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
+                itemCount: pages.length,
+                itemBuilder: (context, index) {
+                  final page = pages[index];
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 24),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surface,
+                      border: Border.all(color: AppTheme.surfaceHighlight),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black26,
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Page ${index + 1} of ${pages.length}',
+                                style: const TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              if (pages.length > 1)
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.redAccent,
+                                    size: 22,
+                                  ),
+                                  visualDensity: .compact,
+                                  onPressed: () async {
+                                    final confirm = await showDialog<bool>(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        backgroundColor: AppTheme.surface,
+                                        title: const Text(
+                                          'Delete Page',
+                                          style: TextStyle(
+                                            color: AppTheme.textPrimary,
+                                          ),
+                                        ),
+                                        content: const Text(
+                                          'Are you sure you want to delete this page?',
+                                          style: TextStyle(
+                                            color: AppTheme.textSecondary,
+                                          ),
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, false),
+                                            child: const Text(
+                                              'Cancel',
+                                              style: TextStyle(
+                                                color: AppTheme.textSecondary,
+                                              ),
+                                            ),
+                                          ),
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, true),
+                                            child: const Text(
+                                              'Delete',
+                                              style: TextStyle(
+                                                color: Colors.redAccent,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                    if (confirm == true) {
+                                      await ref
+                                          .read(documentRepositoryProvider)
+                                          .deletePage(page.id);
+                                      ref.invalidate(
+                                        documentPagesProvider(document.id),
+                                      );
+                                      ref.invalidate(documentListProvider);
+                                    }
+                                  },
+                                ),
+                            ],
                           ),
                         ),
-                      );
-                    },
-                  ),
-                ),
+                        const Divider(
+                          height: 1,
+                          color: AppTheme.surfaceHighlight,
+                        ),
+                        ClipRRect(
+                          borderRadius: const BorderRadius.only(
+                            bottomLeft: Radius.circular(16),
+                            bottomRight: Radius.circular(16),
+                          ),
+                          child: Image.file(
+                            File(page.compressedImagePath),
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const SizedBox(
+                                height: 200,
+                                child: Center(
+                                  child: Icon(
+                                    Icons.broken_image,
+                                    color: AppTheme.textSecondary,
+                                    size: 48,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               );
             },
-          );
+            loading: () => const Center(
+              child: CircularProgressIndicator(color: AppTheme.accent),
+            ),
+            error: (err, st) => Center(
+              child: Text(
+                'Error loading pages: $err',
+                style: const TextStyle(color: Colors.red),
+              ),
+            ),
+          ),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: AppTheme.accent,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add_a_photo_outlined),
+        label: const Text(
+          'Add Page',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        onPressed: () async {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Opening scanner...')));
+          final success = await ref
+              .read(scannerControllerProvider.notifier)
+              .appendPageToDocument(document.id);
+          if (success && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Page added successfully!')),
+            );
+          }
         },
       ),
     );

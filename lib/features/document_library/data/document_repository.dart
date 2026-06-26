@@ -16,6 +16,8 @@ abstract class IDocumentRepository {
   Future<int> insertDocument(String title, List<String> imagePaths);
   Future<void> updateDocumentTitle(int id, String newTitle);
   Future<void> deleteDocument(int id);
+  Future<void> deletePage(int pageId);
+  Future<void> addPageToDocument(int documentId, String imagePath);
 }
 
 final documentRepositoryProvider = Provider<IDocumentRepository>((ref) {
@@ -130,5 +132,35 @@ class DocumentRepository implements IDocumentRepository {
       )..where((tbl) => tbl.documentId.equals(id))).go();
       await (db.delete(db.documents)..where((tbl) => tbl.id.equals(id))).go();
     });
+  }
+
+  @override
+  Future<void> deletePage(int pageId) async {
+    await (db.delete(
+      db.documentPages,
+    )..where((tbl) => tbl.id.equals(pageId))).go();
+  }
+
+  @override
+  Future<void> addPageToDocument(int documentId, String imagePath) async {
+    final pages = await (db.select(
+      db.documentPages,
+    )..where((tbl) => tbl.documentId.equals(documentId))).get();
+    int maxIndex = -1;
+    for (final p in pages) {
+      if (p.pageIndex > maxIndex) {
+        maxIndex = p.pageIndex;
+      }
+    }
+    await db
+        .into(db.documentPages)
+        .insert(
+          DocumentPagesCompanion.insert(
+            documentId: documentId,
+            originalImagePath: imagePath,
+            compressedImagePath: imagePath,
+            pageIndex: maxIndex + 1,
+          ),
+        );
   }
 }
