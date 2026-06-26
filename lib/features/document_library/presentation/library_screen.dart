@@ -1,12 +1,14 @@
-import 'package:docscan/features/document_library/application/library_controller.dart';
-import 'package:docscan/features/document_library/data/document_repository.dart';
-import 'package:docscan/features/export/application/export_controller.dart';
-import 'package:docscan/features/scanner/application/scanner_controller.dart';
-import 'package:docscan/features/tagging/data/tag_repository.dart';
+import 'package:docscan/features/document_library/presentation/document_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/theme/app_theme.dart';
-import '../../../../core/database/database.dart';
+import '../../../core/theme/app_theme.dart';
+import '../application/library_controller.dart';
+import '../../scanner/application/scanner_controller.dart';
+import '../../tagging/data/tag_repository.dart';
+import '../../export/application/export_controller.dart';
+import '../../settings/presentation/settings_screen.dart';
+import 'document_search_delegate.dart';
+import 'package:share_plus/share_plus.dart';
 
 class LibraryScreen extends ConsumerWidget {
   const LibraryScreen({super.key});
@@ -17,6 +19,27 @@ class LibraryScreen extends ConsumerWidget {
     final documentsAsync = ref.watch(documentListProvider);
     final tagsAsync = ref.watch(tagListProvider);
     final selectedTagId = ref.watch(selectedTagProvider);
+
+    ref.listen<AsyncValue<String?>>(exportControllerProvider, (previous, next) {
+      next.whenOrNull(
+        data: (path) {
+          if (path != null) {
+            SharePlus.instance.share(
+              ShareParams(text: 'Document Export', files: [XFile(path)]),
+            );
+
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Exported to: $path')));
+          }
+        },
+        error: (err, st) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Export failed: $err')));
+        },
+      );
+    });
 
     return Scaffold(
       body: SafeArea(
@@ -52,7 +75,14 @@ class LibraryScreen extends ConsumerWidget {
                         Icons.settings_outlined,
                         color: AppTheme.textSecondary,
                       ),
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SettingsScreen(),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -159,7 +189,12 @@ class FloatingScannerButton extends ConsumerWidget {
         children: [
           FloatingActionButton(
             heroTag: 'search',
-            onPressed: () {},
+            onPressed: () {
+              showSearch(
+                context: context,
+                delegate: DocumentSearchDelegate(ref),
+              );
+            },
             backgroundColor: AppTheme.surface,
             foregroundColor: AppTheme.textSecondary,
             elevation: 0,
@@ -200,241 +235,60 @@ class FloatingScannerButton extends ConsumerWidget {
           ),
           const SizedBox(width: 24),
           FloatingActionButton(
-            heroTag: 'filter',
-            onPressed: () {},
+            heroTag: 'add_tag',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) {
+                  final tagController = TextEditingController();
+                  return AlertDialog(
+                    backgroundColor: AppTheme.surface,
+                    title: const Text(
+                      'Add Tag',
+                      style: TextStyle(color: AppTheme.textPrimary),
+                    ),
+                    content: TextField(
+                      controller: tagController,
+                      style: const TextStyle(color: AppTheme.textPrimary),
+                      decoration: const InputDecoration(
+                        hintText: 'Tag Name',
+                        hintStyle: TextStyle(color: AppTheme.textSecondary),
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(color: AppTheme.textSecondary),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          if (tagController.text.trim().isNotEmpty) {
+                            ref
+                                .read(tagRepositoryProvider)
+                                .insertTag(tagController.text.trim());
+                            Navigator.pop(context);
+                          }
+                        },
+                        child: const Text(
+                          'Add',
+                          style: TextStyle(color: AppTheme.accent),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
             backgroundColor: AppTheme.surface,
             foregroundColor: AppTheme.textSecondary,
             elevation: 0,
             shape: const CircleBorder(
               side: BorderSide(color: AppTheme.surfaceHighlight),
             ),
-            child: const Icon(Icons.tune),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class DocumentCard extends ConsumerStatefulWidget {
-  final Document document;
-
-  const DocumentCard({super.key, required this.document});
-
-  @override
-  ConsumerState<DocumentCard> createState() => _DocumentCardState();
-}
-
-class _DocumentCardState extends ConsumerState<DocumentCard> {
-  bool _isEditing = false;
-  late TextEditingController _controller;
-  late FocusNode _focusNode;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.document.title);
-    _focusNode = FocusNode();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  void _saveTitle() {
-    final newTitle = _controller.text.trim();
-    if (newTitle.isNotEmpty && newTitle != widget.document.title) {
-      ref
-          .read(documentRepositoryProvider)
-          .updateDocumentTitle(widget.document.id, newTitle);
-    } else {
-      _controller.text = widget.document.title;
-    }
-    setState(() {
-      _isEditing = false;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.surfaceHighlight),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Stack(
-              children: [
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: AppTheme.surfaceHighlight,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.description_outlined,
-                      color: AppTheme.textSecondary,
-                      size: 32,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(
-                          Icons.picture_as_pdf,
-                          color: AppTheme.accent,
-                          size: 20,
-                        ),
-                        tooltip: 'Export as PDF',
-                        onPressed: () {
-                          ref
-                              .read(exportControllerProvider.notifier)
-                              .exportDocument(widget.document);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Exporting PDF...')),
-                          );
-                        },
-                      ),
-                      PopupMenuButton<String>(
-                        icon: const Icon(
-                          Icons.more_vert,
-                          color: AppTheme.textSecondary,
-                          size: 20,
-                        ),
-                        color: AppTheme.surfaceHighlight,
-                        onSelected: (value) {
-                          if (value == 'delete') {
-                            ref
-                                .read(documentRepositoryProvider)
-                                .deleteDocument(widget.document.id);
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('$value option tapped')),
-                            );
-                          }
-                        },
-                        itemBuilder: (BuildContext context) =>
-                            <PopupMenuEntry<String>>[
-                              const PopupMenuItem<String>(
-                                value: 'Share',
-                                child: Text(
-                                  'Share',
-                                  style: TextStyle(color: AppTheme.textPrimary),
-                                ),
-                              ),
-                              const PopupMenuItem<String>(
-                                value: 'Archive',
-                                child: Text(
-                                  'Archive',
-                                  style: TextStyle(color: AppTheme.textPrimary),
-                                ),
-                              ),
-                              const PopupMenuItem<String>(
-                                value: 'delete',
-                                child: Text(
-                                  'Delete',
-                                  style: TextStyle(color: Colors.redAccent),
-                                ),
-                              ),
-                            ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          _isEditing
-              ? TextField(
-                  controller: _controller,
-                  focusNode: _focusNode,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                    color: AppTheme.textPrimary,
-                  ),
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    contentPadding: EdgeInsets.zero,
-                    border: InputBorder.none,
-                  ),
-                  onSubmitted: (_) => _saveTitle(),
-                  onTapOutside: (_) => _saveTitle(),
-                  autofocus: true,
-                )
-              : GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _isEditing = true;
-                    });
-                    _focusNode.requestFocus();
-                  },
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          widget.document.title,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                            color: AppTheme.textPrimary,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      const Icon(
-                        Icons.edit,
-                        size: 14,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ],
-                  ),
-                ),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '${widget.document.createdAt.month}/${widget.document.createdAt.day}/${widget.document.createdAt.year}',
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontFamily: 'Inter',
-                  color: AppTheme.textSecondary,
-                ),
-              ),
-              const Text(
-                'RAW',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontFamily: 'Inter',
-                  color: AppTheme.textSecondary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
+            child: const Icon(Icons.local_offer_outlined),
           ),
         ],
       ),

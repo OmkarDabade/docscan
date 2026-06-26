@@ -10,6 +10,9 @@ abstract class IDocumentRepository {
   Stream<List<Document>> watchAllDocuments();
   Stream<List<Document>> watchDocumentsByTag(int tagId);
   Future<List<DocumentPage>> getPagesForDocument(int documentId);
+  Future<List<Tag>> getTagsForDocument(int documentId);
+  Future<void> addTagToDocument(int documentId, int tagId);
+  Future<void> removeTagFromDocument(int documentId, int tagId);
   Future<int> insertDocument(String title, List<String> imagePaths);
   Future<void> updateDocumentTitle(int id, String newTitle);
   Future<void> deleteDocument(int id);
@@ -46,6 +49,32 @@ class DocumentRepository implements IDocumentRepository {
     return (db.select(
       db.documentPages,
     )..where((tbl) => tbl.documentId.equals(documentId))).get();
+  }
+
+  @override
+  Future<List<Tag>> getTagsForDocument(int documentId) {
+    final query = db.select(db.tags).join([
+      innerJoin(db.documentTags, db.documentTags.tagId.equalsExp(db.tags.id)),
+    ])..where(db.documentTags.documentId.equals(documentId));
+    return query.map((row) => row.readTable(db.tags)).get();
+  }
+
+  @override
+  Future<void> addTagToDocument(int documentId, int tagId) async {
+    await db
+        .into(db.documentTags)
+        .insert(
+          DocumentTagsCompanion.insert(documentId: documentId, tagId: tagId),
+          mode: InsertMode.insertOrIgnore,
+        );
+  }
+
+  @override
+  Future<void> removeTagFromDocument(int documentId, int tagId) async {
+    await (db.delete(db.documentTags)..where(
+          (tbl) => tbl.documentId.equals(documentId) & tbl.tagId.equals(tagId),
+        ))
+        .go();
   }
 
   @override
