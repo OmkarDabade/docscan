@@ -19,7 +19,7 @@ class ScannerController extends AsyncNotifier<void> {
     return null;
   }
 
-  Future<void> captureAndSaveDocument() async {
+  Future<int?> captureAndSaveDocument() async {
     state = const AsyncValue.loading();
     try {
       final scanner = ref.read(scannerServiceProvider);
@@ -27,6 +27,7 @@ class ScannerController extends AsyncNotifier<void> {
 
       final imagePaths = await scanner.captureDocuments();
 
+      int? docId;
       if (imagePaths != null && imagePaths.isNotEmpty) {
         // Run compression pipeline in background isolate to keep 120 FPS
         final compressedPaths = <String>[];
@@ -40,11 +41,13 @@ class ScannerController extends AsyncNotifier<void> {
         }
 
         final title = 'Scan ${defaultDateFormat.format(DateTime.now())}';
-        await repo.insertDocument(title, compressedPaths);
+        docId = await repo.insertDocument(title, compressedPaths);
       }
       state = const AsyncValue.data(null);
+      return docId;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+      return null;
     }
   }
 }
