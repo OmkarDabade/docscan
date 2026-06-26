@@ -42,4 +42,39 @@ class AppTheme {
       ),
     );
   }
+
+  static ThemeData get lightTheme {
+    return ThemeData(
+      scaffoldBackgroundColor: const Color(0xFFF0F0F5),
+      primaryColor: accent,
+      fontFamily: 'Inter',
+      colorScheme: const ColorScheme.light(
+        primary: accent,
+        surface: Colors.white,
+        background: Color(0xFFF0F0F5),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFFF0F0F5),
+        elevation: 0,
+        centerTitle: false,
+        iconTheme: IconThemeData(color: Colors.black),
+        titleTextStyle: TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 28,
+          fontWeight: FontWeight.w700,
+          color: Colors.black,
+          letterSpacing: -0.5,
+        ),
+      ),
+      textTheme: const TextTheme(
+        bodyLarge: TextStyle(fontFamily: 'Inter', color: Colors.black),
+        bodyMedium: TextStyle(fontFamily: 'Inter', color: Color(0xFF606065)),
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: accent,
+        foregroundColor: Colors.white,
+        elevation: 8,
+      ),
+    );
+  }
 }

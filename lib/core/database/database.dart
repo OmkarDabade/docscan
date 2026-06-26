@@ -42,6 +42,22 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   int get schemaVersion => 1;
+
+  @override
+  MigrationStrategy get migration {
+    return MigrationStrategy(
+      onCreate: (Migrator m) async {
+        await m.createAll();
+        // Seed initial tags
+        await into(tags).insert(TagsCompanion.insert(name: 'Financial'));
+        await into(tags).insert(TagsCompanion.insert(name: 'Legal'));
+        await into(tags).insert(TagsCompanion.insert(name: 'Personal'));
+        await into(tags).insert(TagsCompanion.insert(name: 'Identity'));
+        await into(tags).insert(TagsCompanion.insert(name: 'Tax_2026'));
+        await into(tags).insert(TagsCompanion.insert(name: 'Medical'));
+      },
+    );
+  }
 }
 
 LazyDatabase openConnection() {
