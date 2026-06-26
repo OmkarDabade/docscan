@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 
 abstract class ITagRepository {
   Stream<List<Tag>> watchAllTags();
+  Future<List<Tag>> getAllTags();
   Future<int> insertTag(String name);
   Future<void> attachTagToDocument(int documentId, int tagId);
 }
@@ -21,6 +22,11 @@ class TagRepository implements ITagRepository {
   @override
   Stream<List<Tag>> watchAllTags() {
     return db.select(db.tags).watch();
+  }
+
+  @override
+  Future<List<Tag>> getAllTags() {
+    return db.select(db.tags).get();
   }
 
   @override
