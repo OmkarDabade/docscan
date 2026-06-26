@@ -29,17 +29,28 @@ class DocumentRepository implements IDocumentRepository {
 
   @override
   Stream<List<Document>> watchAllDocuments() {
-    return db.select(db.documents).watch();
+    return (db.select(db.documents)..orderBy([
+          (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
+        ]))
+        .watch();
   }
 
   @override
   Stream<List<Document>> watchDocumentsByTag(int tagId) {
-    final query = db.select(db.documents).join([
-      innerJoin(
-        db.documentTags,
-        db.documentTags.documentId.equalsExp(db.documents.id),
-      ),
-    ])..where(db.documentTags.tagId.equals(tagId));
+    final query =
+        db.select(db.documents).join([
+            innerJoin(
+              db.documentTags,
+              db.documentTags.documentId.equalsExp(db.documents.id),
+            ),
+          ])
+          ..where(db.documentTags.tagId.equals(tagId))
+          ..orderBy([
+            OrderingTerm(
+              expression: db.documents.createdAt,
+              mode: OrderingMode.desc,
+            ),
+          ]);
 
     return query.map((row) => row.readTable(db.documents)).watch();
   }

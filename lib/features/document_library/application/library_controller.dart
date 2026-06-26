@@ -23,3 +23,11 @@ final documentListProvider = StreamProvider<List<Document>>((ref) {
     return repo.watchDocumentsByTag(selectedTag);
   }
 });
+
+final documentPagesProvider = FutureProvider.family<List<DocumentPage>, int>((
+  ref,
+  documentId,
+) {
+  final repo = ref.watch(documentRepositoryProvider);
+  return repo.getPagesForDocument(documentId);
+});
